@@ -1,0 +1,80 @@
+-- =====================================================================================
+--                CONSULTAS SQL INEFICIENTES PARA PRUEBAS DE AGENTE
+-- =====================================================================================
+-- Este archivo contiene tres consultas diseñadas para ser poco óptimas, con el
+-- objetivo de probar un agente de optimización de SQL sobre un modelo de datos
+-- con tablas de clientes, órdenes y productos.
+-- =====================================================================================
+
+
+-- -------------------------------------------------------------------------------------
+-- CONSULTA 1: Total gastado por cada cliente usando subconsultas correlacionadas.
+-- -------------------------------------------------------------------------------------
+-- Objetivo: Obtener el nombre de cada cliente y el total que ha gastado en todas sus órdenes.
+--
+-- Ineficiencias a detectar:
+-- 1. Subconsulta correlacionada para obtener el nombre del cliente: Se ejecuta una vez por cada fila de `fct_orders`.
+
+
+
+-- -------------------------------------------------------------------------------------
+-- CONSULTA 2: Total gastado por cada cliente usando subconsultas correlacionadas.
+-- -------------------------------------------------------------------------------------
+-- Objetivo: Obtener el nombre de cada cliente y el total que ha gastado en todas sus órdenes.
+--
+-- Ineficiencias a detectar:
+-- 1. Subconsulta correlacionada para obtener el nombre del cliente: Se ejecuta una vez por cada fila de `fct_orders`.
+-- 2. `SELECT *`: Selecciona todas las columnas de la tabla de órdenes, aunque solo se necesiten `customer_id` y `order_total`, generando un sobrecoste en I/O.
+-- 3. Agrupación tardía: La agrupación se realiza sobre el resultado completo de la subconsulta.
+
+
+
+-- -------------------------------------------------------------------------------------
+-- CONSULTA 3: Detalles de productos en órdenes recientes usando un mal JOIN y función en WHERE.
+-- -------------------------------------------------------------------------------------
+-- Objetivo: Obtener el nombre del producto y el precio para todos los artículos pedidos en los últimos 90 días.
+--
+-- Ineficiencias a detectar:
+-- 1. Función en la cláusula WHERE: `DATE(o.ordered_at)` impide el uso de índices en la columna `ordered_at`, forzando un escaneo completo de la tabla (full table scan).
+-- 2. `RIGHT JOIN` innecesario: Un `INNER JOIN` sería más eficiente y lógico, ya que no nos interesan los productos que nunca se han pedido.
+-- 3. `DISTINCT`: El uso de `DISTINCT` para eliminar duplicados suele ser un indicio de un mal planteamiento del JOIN y es computacionalmente caro.
+
+
+
+-- -------------------------------------------------------------------------------------
+-- CONSULTA 4: Conteo de productos de comida vs. bebida por cliente usando UNION.
+-- -------------------------------------------------------------------------------------
+-- Objetivo: Crear un reporte que muestre, por cada cliente, cuántos productos de comida y bebida ha comprado.
+--
+-- Ineficiencias a detectar:
+-- 1. `UNION` en lugar de `UNION ALL`: `UNION` busca y elimina duplicados entre los dos conjuntos de resultados, lo cual es innecesario aquí y consume muchos recursos.
+-- 2. Múltiples lecturas de las mismas tablas: Las tablas `fct_orders` y `order_items` se leen dos veces, una para comida y otra para bebida. Se podría hacer en una sola pasada.
+-- 3. `JOIN` redundante con `dim_customers`: El `JOIN` con la tabla de clientes se realiza en ambas partes del `UNION`, cuando podría hacerse una sola vez al final.
+
+
+
+-- -------------------------------------------------------------------------------------
+-- CONSULTA 5: Clientes VIP con JOIN incorrecto y sintaxis errónea.
+-- -------------------------------------------------------------------------------------
+-- Objetivo: Listar los productos de más de 20€ comprados por clientes que han gastado más de 500€ en total.
+--
+-- Errores y Puntos de Optimización:
+-- 1. Error Sintáctico: Falta una coma después de `c.name` en el SELECT.
+-- 2. Error Lógico/Sintáctico: El `JOIN` entre clientes y items es incorrecto (`c.customer_id = oi.order_id`).
+-- 3. Ineficiencia: Se usa una subconsulta para calcular el total gastado por cliente, que podría ser una función de ventana o un CTE.
+-- 4. Mala Práctica: La cláusula `HAVING total_spent > 500` fallaría porque `total_spent` es un alias.
+-- 5. Mala Indentación: El código es difícil de leer.
+
+
+
+-- -------------------------------------------------------------------------------------
+-- CONSULTA 6: Ranking de productos con JOIN implícito y errores de agrupación.
+-- -------------------------------------------------------------------------------------
+-- Objetivo: Rankear los productos según la cantidad vendida cada mes.
+--
+-- Errores y Puntos de Optimización:
+-- 1. Error Sintáctico: `GROUP BY 1` está incompleto, falta la segunda columna.
+-- 2. Error Sintáctico: Falta la palabra clave `AS` para el alias de columna `total_quantity`.
+-- 3. Mala Práctica: Se usa la sintaxis de JOIN implícita (con comas en el FROM), que es antigua y propensa a errores.
+-- 4. Ineficiencia: Se aplica una función `FORMAT_TIMESTAMP` en el `GROUP BY`. Es mucho más eficiente usar `TIMESTAMP_TRUNC`.
+-- 5. Mala Indentación: La consulta es un caos de formato.
