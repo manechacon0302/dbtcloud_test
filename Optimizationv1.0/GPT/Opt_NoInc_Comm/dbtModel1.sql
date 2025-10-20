@@ -32,4 +32,4 @@ orders_with_customer as (
       on o.customer_id = c.customer_id
 )
 
-select * from orders_with_customer;
+select * from orders_with_customer; 
