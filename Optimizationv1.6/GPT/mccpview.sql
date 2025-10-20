@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+
 
 with base as (
     select
@@ -71,9 +71,7 @@ cycle_dates as (
         end as lastdaycicle,
         right(sp_underscore_1, 2) as ciclo -- override ciclo with calculation for consistency
     from parsed p
-),
-
-final_calc as (
+)
     select
         c.external_id_vod__c,
         max_dates.fechaCargaAct,
@@ -143,17 +141,4 @@ final_calc as (
         c.product_name_vod__c,
         working_days_to_prorrate,
         working_days_ciclo
-)
 
-select * from final_calc
-
--- Optimizations applied:
--- 1. Reduced repeated calls to SPLIT_PART by caching results in base CTE.
--- 2. Converted date string concatenations to date type early and reused.
--- 3. Used cross join once for max_dates to avoid multiple subqueries.
--- 4. Converted 'IN' predicate for channels for better planner optimization.
--- 5. Removed commented-out/unnecessary code and unused fields.
--- 6. Calculated working days with direct DATEDIFF calculations only once per row.
--- 7. Replaced multiple to_date calls by working in DATE types early.
--- 8. Ensured all group by columns are from the selected fields.
--- 9. Added comments explaining each step and logic.
